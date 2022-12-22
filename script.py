@@ -1,8 +1,8 @@
 import os
-from sys import argv
-from hashlib import md5
-from time import sleep
 from datetime import datetime
+from hashlib import md5
+from sys import argv
+from time import sleep
 
 
 def make_md5_list(path):
@@ -38,32 +38,38 @@ def replication(s_path, r_path, l_file):
                 # And go to that dir with recursion
                 replication(source_file, replica, l_file)
             else:
-                with open(source_file, "rb") as source:
-                    # Get current time for log one time
-                    # For reducing line size and not to get it every time
+                try:
+                    with open(source_file, "rb") as source:
+                        # Get current time for log one time
+                        # For reducing line size and not to get it every time
+                        current_time = datetime.now().strftime('%H:%M:%S')
+                        data = source.read()
+                        # Get hash sum for comparing
+                        md5_data = md5(data).hexdigest()
+                        if md5_data not in md_dict and not os.path.exists(replica):
+                            # Check if it full new file and copy
+                            md_dict[md5_data] = replica
+                            # Logging
+                            print(
+                                f"{current_time} | Copying {source_file} to {replica}")
+                            log_file.write(
+                                f"{current_time} | Copying {source_file} to {replica}\n")
+                            with open(replica, "wb") as r_file:
+                                r_file.write(data)
+                        elif md5_data in md_dict and not os.path.exists(replica):
+                            # Or if just renamed file
+                            os.rename(md_dict[md5_data],
+                                      r_path + os.sep + filename)
+                            # Logging
+                            log_file.write(
+                                f"{current_time} | File {replica} was renamed\n")
+                            print(
+                                f"{current_time} | File {replica} was renamed")
+                except PermissionError:
                     current_time = datetime.now().strftime('%H:%M:%S')
-                    data = source.read()
-                    # Get hash sum for comparing
-                    md5_data = md5(data).hexdigest()
-                    if md5_data not in md_dict and not os.path.exists(replica):
-                        # Check if it full new file and copy
-                        md_dict[md5_data] = replica
-                        # Logging
-                        print(
-                            f"{current_time} | Copying {source_file} to {replica}")
-                        log_file.write(
-                            f"{current_time} | Copying {source_file} to {replica}\n")
-                        with open(replica, "wb") as r_file:
-                            r_file.write(data)
-                    elif md5_data in md_dict and not os.path.exists(replica):
-                        # Or if just renamed file
-                        os.rename(md_dict[md5_data],
-                                  r_path + os.sep + filename)
-                        # Logging
-                        log_file.write(
-                            f"{current_time} | File {replica} was renamed\n")
-                        print(
-                            f"{current_time} | File {replica} was renamed")
+                    print(f"{current_time} | PermissionError with {source_file}")
+                    log_file.write(
+                        f"{current_time} | PermissionError with {source_file}")
 
 
 def removing(s_path, r_path, l_file):
@@ -74,8 +80,9 @@ def removing(s_path, r_path, l_file):
         current_time = datetime.now().strftime('%H:%M:%S')
         if os.path.isdir(replica):
             # if file is dir and was deleted
-            # Don't check every file in dir. Just delete dir
             if not os.path.exists(source_file):
+                # Recursion for delete all the files
+                removing(source_file, replica, l_file)
                 os.rmdir(replica)
                 with open(l_file, "a") as log_file:
                     log_file.write(
