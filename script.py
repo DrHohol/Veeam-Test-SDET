@@ -26,8 +26,8 @@ def replication(s_path, r_path, l_file):
     with open(l_file, "a") as log_file:
         # Open log file at start
         # To not open after every operation
-        for filename in os.listdir(s_path):
-            # Get all filenames in directory
+        for filename in os.listdir(s_path):  # Get all filenames in directory
+            # Generate path for file
             source_file = s_path + os.sep + filename
             replica = r_path + os.sep + filename
 
@@ -39,12 +39,12 @@ def replication(s_path, r_path, l_file):
                 replication(source_file, replica, l_file)
             else:
                 with open(source_file, "rb") as source:
-                    data = source.read()
-                    # Compare hash sum
-                    md5_data = md5(data).hexdigest()
                     # Get current time for log one time
                     # For reducing line size and not to get it every time
                     current_time = datetime.now().strftime('%H:%M:%S')
+                    data = source.read()
+                    # Get hash sum for comparing
+                    md5_data = md5(data).hexdigest()
                     if md5_data not in md_dict and not os.path.exists(replica):
                         # Check if it full new file and copy
                         md_dict[md5_data] = replica
@@ -68,13 +68,16 @@ def replication(s_path, r_path, l_file):
 
 def removing(s_path, r_path, l_file):
     for filename in os.listdir(r_path):
+        # Get all files in replica folder and compare
         source_file = s_path + os.sep + filename
         replica = r_path + os.sep + filename
+        current_time = datetime.now().strftime('%H:%M:%S')
         if os.path.isdir(replica):
+            # if file is dir and was deleted
+            # Don't check every file in dir. Just delete dir
             if not os.path.exists(source_file):
                 os.rmdir(replica)
                 with open(l_file, "a") as log_file:
-                    current_time = datetime.now().strftime('%H:%M:%S')
                     log_file.write(
                         f"{current_time} | removing directory {replica}\n")
                 print(
@@ -84,7 +87,6 @@ def removing(s_path, r_path, l_file):
         else:
             if not os.path.exists(source_file):
                 with open(l_file, "a") as log_file:
-                    current_time = datetime.now().strftime('%H:%M:%S')
                     log_file.write(
                         f"{current_time} | removing {replica}\n")
                 print(
@@ -99,8 +101,9 @@ if __name__ == "__main__":
         l_file = argv[3]
     except IndexError:
         print(
-            "Some argument indeed.\nUsage: python3 script.py /source/path/ /replica/path/ /log/file.log interval(in sec)"
+            "Some argument needed.\nUsage: python3 script.py /source/path /replica/path log.txt interval(in sec)"
         )
+        exit()
     with open(l_file, "a") as log:
         log.write(
             f"{datetime.now().strftime('%H:%M:%S')} | Starting...\n")
